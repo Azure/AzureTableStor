@@ -18,6 +18,8 @@
 #' - There can be at most 255 properties per entity, although different entities can have different properties.
 #' - Table properties must be atomic. In particular, they cannot be nested lists.
 #'
+#' Note that table storage does _not_ require that all entities in a table must have the same properties.
+#'
 #' For `insert_table_entity`, `update_table_entity` and `import_table_entities`, you can also specify JSON text representing the data to insert/update/import, instead of a list or data frame.
 #'
 #' `list_table_entities(as_data_frame=TRUE)` for a large table may be slow. If this is a problem, and you know that all entities in the table have the same schema, try setting `as_data_frame=FALSE` and converting to a data frame manually.
@@ -62,6 +64,8 @@
 #'     partition_key=as.character(mtcars$cyl))
 #'
 #' list_table_entities(tab)
+#' list_table_entities(tab, filter="firstname eq 'Satya'")
+#' list_table_entities(tab, filter="RowKey eq 'Toyota Corolla'")
 #'
 #' delete_table_entity(tab, "row1", "partition1")
 #'
@@ -156,7 +160,7 @@ list_table_entities <- function(table, filter=NULL, select=NULL, as_data_frame=T
 
     # table storage allows columns to vary by row, so cannot use base::rbind
     if(as_data_frame)
-        do.call(vctrs::vec_rbind, lapply(val, as.data.frame, stringsAsFactors=FALSE))
+        do.call(vctrs::vec_rbind, lapply(val, as.data.frame, stringsAsFactors=FALSE, optional=TRUE))
     else val
 }
 
@@ -175,7 +179,7 @@ get_table_entity <- function(table, row_key, partition_key, select=NULL)
 
 #' @rdname table_entity
 #' @export
-import_table_entities <- function(table, data, row_key=data$RowKey, partition_key=data$PartitionKey,
+import_table_entities <- function(table, data, row_key=NULL, partition_key=NULL,
                                   batch_status_handler=c("warn", "stop", "message", "pass"))
 {
     if(is.character(data) && jsonlite::validate(data))

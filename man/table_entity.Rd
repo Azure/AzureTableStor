@@ -29,8 +29,8 @@ get_table_entity(table, row_key, partition_key, select = NULL)
 import_table_entities(
   table,
   data,
-  row_key = data$RowKey,
-  partition_key = data$PartitionKey,
+  row_key = NULL,
+  partition_key = NULL,
   batch_status_handler = c("warn", "stop", "message", "pass")
 )
 }
@@ -74,6 +74,8 @@ Table storage imposes the following requirements for properties (columns) of an 
 \item Table properties must be atomic. In particular, they cannot be nested lists.
 }
 
+Note that table storage does \emph{not} require that all entities in a table must have the same properties.
+
 For \code{insert_table_entity}, \code{update_table_entity} and \code{import_table_entities}, you can also specify JSON text representing the data to insert/update/import, instead of a list or data frame.
 
 \code{list_table_entities(as_data_frame=TRUE)} for a large table may be slow. If this is a problem, and you know that all entities in the table have the same schema, try setting \code{as_data_frame=FALSE} and converting to a data frame manually.
@@ -106,6 +108,8 @@ import_table_entities(tab, mtcars,
     partition_key=as.character(mtcars$cyl))
 
 list_table_entities(tab)
+list_table_entities(tab, filter="firstname eq 'Satya'")
+list_table_entities(tab, filter="RowKey eq 'Toyota Corolla'")
 
 delete_table_entity(tab, "row1", "partition1")
 
