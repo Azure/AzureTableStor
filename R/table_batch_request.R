@@ -28,6 +28,30 @@
 #' [import_table_entities], which uses (multiple) batch transactions under the hood
 #'
 #' [Performing entity group transactions](https://docs.microsoft.com/en-us/rest/api/storageservices/performing-entity-group-transactions)
+#' @examples
+#' \dontrun{
+#'
+#' endp <- table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
+#' tab <- create_azure_table(endp, "mytable")
+#'
+#' ## a simple batch insert
+#' ir <- subset(iris, Species == "setosa")
+#'
+#' # property names must be valid C# variable names
+#' names(ir) <- sub("\\.", "_", names(ir))
+#'
+#' # create the PartitionKey and RowKey properties
+#' ir$PartitionKey <- ir$Species
+#' ir$RowKey <- sprintf("%03d", seq_len(nrow(ir)))
+#'
+#' # generate the array of insert operations: 1 per row
+#' ops <- lapply(seq_len(nrow(ir)), function(i)
+#'     create_batch_operation(endp, "mytable", body=ir[i, ], http_verb="POST")))
+#'
+#' # send it to the endpoint
+#' do_batch_transaction(endp, ops)
+#'
+#' }
 #' @rdname table_batch
 #' @export
 create_batch_operation <- function(endpoint, path, options=list(), headers=list(), body=NULL,

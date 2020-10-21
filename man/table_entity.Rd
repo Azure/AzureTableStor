@@ -15,8 +15,8 @@ insert_table_entity(table, entity)
 update_table_entity(
   table,
   entity,
-  row_key = entity$RowKey,
-  partition_key = entity$PartitionKey,
+  row_key = NULL,
+  partition_key = NULL,
   etag = NULL
 )
 
@@ -29,8 +29,8 @@ get_table_entity(table, row_key, partition_key, select = NULL)
 import_table_entities(
   table,
   data,
-  row_key = NULL,
-  partition_key = NULL,
+  row_key = data$RowKey,
+  partition_key = data$PartitionKey,
   batch_status_handler = c("warn", "stop", "message", "pass")
 )
 }
@@ -39,7 +39,7 @@ import_table_entities(
 
 \item{entity}{For \code{insert_table_entity} and \code{update_table_entity}, a named list giving the properties (columns) of the entity. See 'Details' below.}
 
-\item{row_key, partition_key}{For \code{get_table_entity}, \code{update_table_entity} and \code{delete_table_entity}, the row and partition key values that identify the entity to get, update or delete. For \code{import_table_entities}, optionally the \emph{columns} in the imported data to treat as the row and partition keys. These will be renamed to \code{RowKey} and \code{PartitionKey} respectively.}
+\item{row_key, partition_key}{For \code{get_table_entity}, \code{update_table_entity} and \code{delete_table_entity}, the row and partition key values that identify the entity to get, update or delete. For \code{import_table_entities}, the columns in the imported data to treat as the row and partition keys. The default is to use columns named 'RowKey' and 'PartitionKey' respectively.}
 
 \item{etag}{For \code{update_table_entity} and \code{delete_table_entity}, an optional Etag value. If this is supplied, the update or delete operation will proceed only if the target entity's Etag matches this value. This ensures that an entity is only updated/deleted if it has not been modified since it was last retrieved.}
 
@@ -68,13 +68,48 @@ These functions operate on rows of a table, also known as \emph{entities}. \code
 
 Table storage imposes the following requirements for properties (columns) of an entity:
 \itemize{
-\item There must be properties named \code{RowKey} and \code{PartitionKey}, which together form the entity's unique identifier.
+\item There must be properties named \code{RowKey} and \code{PartitionKey}, which together form the entity's unique identifier. These properties must be of type character.
 \item The property \code{Timestamp} cannot be used (strictly speaking, it is reserved by the system).
 \item There can be at most 255 properties per entity, although different entities can have different properties.
-\item Table properties must be atomic (ie, they cannot be nested lists).
+\item Table properties must be atomic. In particular, they cannot be nested lists.
 }
 
 For \code{insert_table_entity}, \code{update_table_entity} and \code{import_table_entities}, you can also specify JSON text representing the data to insert/update/import, instead of a list or data frame.
+
+\code{list_table_entities(as_data_frame=TRUE)} for a large table may be slow. If this is a problem, and you know that all entities in the table have the same schema, try setting \code{as_data_frame=FALSE} and converting to a data frame manually.
+}
+\examples{
+\dontrun{
+
+endp <- table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
+tab <- create_azure_table(endp, "mytable")
+
+insert_table_entity(tab, list(
+    RowKey="row1",
+    PartitionKey="partition1",
+    firstname="Bill",
+    lastname="Gates"
+))
+
+get_table_entity(tab, "row1", "partition1")
+
+update_table_entity(tab, list(
+    RowKey="row1",
+    PartitionKey="partition1",
+    firstname="Satya",
+    lastname="Nadella"
+))
+
+# we can import to the same table as above: table storage doesn't enforce a schema
+import_table_entities(tab, mtcars,
+    row_key=row.names(mtcars),
+    partition_key=as.character(mtcars$cyl))
+
+list_table_entities(tab)
+
+delete_table_entity(tab, "row1", "partition1")
+
+}
 }
 \seealso{
 \link{azure_table}, \link{do_batch_transaction}

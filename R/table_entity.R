@@ -3,7 +3,7 @@
 #' @param table A table object, of class `azure_table`.
 #' @param entity For `insert_table_entity` and `update_table_entity`, a named list giving the properties (columns) of the entity. See 'Details' below.
 #' @param data For `import_table_entities`, a data frame. See 'Details' below.
-#' @param row_key,partition_key For `get_table_entity`, `update_table_entity` and `delete_table_entity`, the row and partition key values that identify the entity to get, update or delete. For `import_table_entities`, optionally the _columns_ in the imported data to treat as the row and partition keys. These will be renamed to `RowKey` and `PartitionKey` respectively.
+#' @param row_key,partition_key For `get_table_entity`, `update_table_entity` and `delete_table_entity`, the row and partition key values that identify the entity to get, update or delete. For `import_table_entities`, the columns in the imported data to treat as the row and partition keys. The default is to use columns named 'RowKey' and 'PartitionKey' respectively.
 #' @param etag For `update_table_entity` and `delete_table_entity`, an optional Etag value. If this is supplied, the update or delete operation will proceed only if the target entity's Etag matches this value. This ensures that an entity is only updated/deleted if it has not been modified since it was last retrieved.
 #' @param filter,select For `list_table_entities`, optional row filter and column select expressions to subset the result with. If omitted, `list_table_entities` will return all entities in the table.
 #' @param as_data_frame For `list_table_entities`, whether to return the results as a data frame, rather than a list of table rows.
@@ -13,12 +13,14 @@
 #' These functions operate on rows of a table, also known as _entities_. `insert`, `get`, `update` and `delete_table_entity` operate on an individual row. `import_table_entities` bulk-inserts multiple rows of data into the table, using batch transactions. `list_table_entities` queries the table and returns multiple rows based on the `filter` and `subset` arguments.
 #'
 #' Table storage imposes the following requirements for properties (columns) of an entity:
-#' - There must be properties named `RowKey` and `PartitionKey`, which together form the entity's unique identifier.
+#' - There must be properties named `RowKey` and `PartitionKey`, which together form the entity's unique identifier. These properties must be of type character.
 #' - The property `Timestamp` cannot be used (strictly speaking, it is reserved by the system).
 #' - There can be at most 255 properties per entity, although different entities can have different properties.
-#' - Table properties must be atomic (ie, they cannot be nested lists).
+#' - Table properties must be atomic. In particular, they cannot be nested lists.
 #'
 #' For `insert_table_entity`, `update_table_entity` and `import_table_entities`, you can also specify JSON text representing the data to insert/update/import, instead of a list or data frame.
+#'
+#' `list_table_entities(as_data_frame=TRUE)` for a large table may be slow. If this is a problem, and you know that all entities in the table have the same schema, try setting `as_data_frame=FALSE` and converting to a data frame manually.
 #' @return
 #' `insert_table_entity` and `update_table_entity` return the Etag of the inserted/updated entity, invisibly.
 #'
@@ -32,6 +34,38 @@
 #' [azure_table], [do_batch_transaction]
 #'
 #' [Understanding the table service data model](https://docs.microsoft.com/en-us/rest/api/storageservices/understanding-the-table-service-data-model)
+#' @examples
+#' \dontrun{
+#'
+#' endp <- table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
+#' tab <- create_azure_table(endp, "mytable")
+#'
+#' insert_table_entity(tab, list(
+#'     RowKey="row1",
+#'     PartitionKey="partition1",
+#'     firstname="Bill",
+#'     lastname="Gates"
+#' ))
+#'
+#' get_table_entity(tab, "row1", "partition1")
+#'
+#' update_table_entity(tab, list(
+#'     RowKey="row1",
+#'     PartitionKey="partition1",
+#'     firstname="Satya",
+#'     lastname="Nadella"
+#' ))
+#'
+#' # we can import to the same table as above: table storage doesn't enforce a schema
+#' import_table_entities(tab, mtcars,
+#'     row_key=row.names(mtcars),
+#'     partition_key=as.character(mtcars$cyl))
+#'
+#' list_table_entities(tab)
+#'
+#' delete_table_entity(tab, "row1", "partition1")
+#'
+#' }
 #' @aliases table_entity
 #' @rdname table_entity
 #' @export
@@ -58,7 +92,7 @@ insert_table_entity <- function(table, entity)
 
 #' @rdname table_entity
 #' @export
-update_table_entity <- function(table, entity, row_key=entity$RowKey, partition_key=entity$PartitionKey, etag=NULL)
+update_table_entity <- function(table, entity, row_key=NULL, partition_key=NULL, etag=NULL)
 {
     if(is.character(entity) && jsonlite::validate(entity))
         entity <- jsonlite::fromJSON(entity, simplifyDataFrame=FALSE)
@@ -68,6 +102,10 @@ update_table_entity <- function(table, entity, row_key=entity$RowKey, partition_
             entity <- unclass(entity)
         else stop("Can only update one entity at a time", call.=FALSE)
     }
+    if(!is.null(row_key))
+        entity$RowKey <- row_key
+    if(!is.null(partition_key))
+        entity$PartitionKey <- partition_key
 
     check_column_names(entity)
     headers <- if(!is.null(etag))
@@ -118,7 +156,7 @@ list_table_entities <- function(table, filter=NULL, select=NULL, as_data_frame=T
 
     # table storage allows columns to vary by row, so cannot use base::rbind
     if(as_data_frame)
-        do.call(vctrs::vec_rbind, val)
+        do.call(vctrs::vec_rbind, lapply(val, as.data.frame, stringsAsFactors=FALSE))
     else val
 }
 
@@ -137,16 +175,16 @@ get_table_entity <- function(table, row_key, partition_key, select=NULL)
 
 #' @rdname table_entity
 #' @export
-import_table_entities <- function(table, data, row_key=NULL, partition_key=NULL,
+import_table_entities <- function(table, data, row_key=data$RowKey, partition_key=data$PartitionKey,
                                   batch_status_handler=c("warn", "stop", "message", "pass"))
 {
     if(is.character(data) && jsonlite::validate(data))
         data <- jsonlite::fromJSON(data, simplifyDataFrame=TRUE)
 
-    if(!is.null(partition_key))
-        names(data)[names(data) == partition_key] <- "PartitionKey"
     if(!is.null(row_key))
-        names(data)[names(data) == row_key] <- "RowKey"
+        data$RowKey <- row_key
+    if(!is.null(partition_key))
+        data$PartitionKey <- partition_key
 
     check_column_names(data)
     endpoint <- table$endpoint

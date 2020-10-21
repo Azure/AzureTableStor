@@ -39,11 +39,26 @@ delete_azure_table(endpoint, ...)
 
 \item{confirm}{For deleting a table, whether to ask for confirmation.}
 }
+\value{
+\code{azure_table} and \code{create_azure_table} return an object of class \code{azure_table}. \code{list_azure_tables} returns a list of such objects.
+}
 \description{
 Operations with azure tables
 }
 \details{
 These methods are for accessing and managing tables within a storage account.
+}
+\examples{
+\dontrun{
+
+endp <- table_endpoint("https://mystorageacct.table.core.windows.net", key="mykey")
+
+create_azure_table(endp, "mytable")
+tab <- azure_table(endp, "mytable")
+list_azure_tables(endp)
+delete_azure_table(tab)
+
+}
 }
 \seealso{
 \link{table_endpoint}, \link{table_entity}

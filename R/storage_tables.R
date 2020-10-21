@@ -7,8 +7,21 @@
 #' @rdname azure_table
 #' @details
 #' These methods are for accessing and managing tables within a storage account.
+#' @return
+#' `azure_table` and `create_azure_table` return an object of class `azure_table`. `list_azure_tables` returns a list of such objects.
 #' @seealso
 #' [table_endpoint], [table_entity]
+#' @examples
+#' \dontrun{
+#'
+#' endp <- table_endpoint("https://mystorageacct.table.core.windows.net", key="mykey")
+#'
+#' create_azure_table(endp, "mytable")
+#' tab <- azure_table(endp, "mytable")
+#' list_azure_tables(endp)
+#' delete_azure_table(tab)
+#'
+#' }
 #' @export
 azure_table <- function(endpoint, ...)
 {

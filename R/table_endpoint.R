@@ -4,8 +4,8 @@
 #'
 #' @param endpoint For `table_endpoint`, the URL of the table service endpoint. This will be of the form `https://{account-name}.table.core.windows.net` if the service is provided by a storage account in the Azure public cloud, while for a CosmosDB database, it will be of the form `https://{account-name}.table.cosmos.azure.com:443`. For `call_table_endpoint`, an object of class `table_endpoint`.
 #' @param key The access key for the storage account.
-#' @param token An Azure Active Directory (AAD) authentication token. Not used for table storage.
-#' @param sas A shared access signature (SAS) for the account.
+#' @param token An Azure Active Directory (AAD) authentication token. For compatibility with AzureStor; not used for table storage.
+#' @param sas A shared access signature (SAS) for the account. At least one of `key` or `sas` should be provided.
 #' @param api_version The storage API version to use when interacting with the host. Defaults to "2019-07-07".
 #' @param path For `call_table_endpoint`, the path component of the endpoint call.
 #' @param options For `call_table_endpoint`, a named list giving the query parameters for the operation.
@@ -21,6 +21,18 @@
 #' [azure_table], [table_entity]
 #'
 #' [Table service REST API reference](https://docs.microsoft.com/en-us/rest/api/storageservices/table-service-rest-api)
+#'
+#' [Authorizing requests to Azure storage services](https://docs.microsoft.com/en-us/rest/api/storageservices/authorize-requests-to-azure-storage)
+#' @examples
+#' \dontrun{
+#'
+#' # storage account table endpoint
+#' table_endpoint("https://mystorageacct.table.core.windows.net", key="mykey")
+#'
+#' # Cosmos DB table endpoint
+#' table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
+#'
+#' }
 #' @rdname table_endpoint
 #' @export
 table_endpoint <- function(endpoint, key=NULL, token=NULL, sas=NULL,
