@@ -1,5 +1,5 @@
 Package: AzureTableStor
-Title: Interface to the table storage service in 'Azure'
+Title: Interface to the Table Storage Service in 'Azure'
 Version: 0.0.1
 Authors@R: c(
     person("Hong", "Ooi", , "hongooi73@gmail.com", role = c("aut", "cre")),
@@ -16,6 +16,7 @@ Imports:
     AzureRMR (>= 2.0.0),
     AzureStor (>= 3.0.0),
     jsonlite,
+    openssl,
     httr,
     uuid,
     vctrs (>= 0.3.0)
