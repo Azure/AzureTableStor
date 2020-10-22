@@ -1,6 +1,6 @@
 #' Operations with azure tables
 #'
-#' @param endpoint An object of class `table_endpoint`.
+#' @param endpoint An object of class `table_endpoint` or, for `create_azure_table.azure_table`, an object of class `azure_table`.
 #' @param name The name of a table in a storage account.
 #' @param confirm For deleting a table, whether to ask for confirmation.
 #' @param ... Other arguments passed to lower-level functions.
@@ -17,9 +17,11 @@
 #' endp <- table_endpoint("https://mystorageacct.table.core.windows.net", key="mykey")
 #'
 #' create_azure_table(endp, "mytable")
-#' tab <- azure_table(endp, "mytable")
+#' tab <- azure_table(endp, "mytable2")
+#' create_azure_table(tab)
 #' list_azure_tables(endp)
 #' delete_azure_table(tab)
+#' delete_azure_table(endp, "mytable")
 #'
 #' }
 #' @export
@@ -78,6 +80,13 @@ create_azure_table.table_endpoint <- function(endpoint, name, ...)
 {
     res <- call_table_endpoint(endpoint, "Tables", body=list(TableName=name), ..., http_verb="POST")
     azure_table(endpoint, res$TableName)
+}
+
+#' @rdname azure_table
+#' @export
+create_azure_table.azure_table <- function(endpoint, ...)
+{
+    create_azure_table(endpoint$endpoint, endpoint$name)
 }
 
 

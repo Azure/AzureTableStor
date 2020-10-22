@@ -7,6 +7,7 @@
 \alias{list_azure_tables.table_endpoint}
 \alias{create_azure_table}
 \alias{create_azure_table.table_endpoint}
+\alias{create_azure_table.azure_table}
 \alias{delete_azure_table}
 \alias{delete_azure_table.table_endpoint}
 \alias{delete_azure_table.azure_table}
@@ -24,6 +25,8 @@ create_azure_table(endpoint, ...)
 
 \method{create_azure_table}{table_endpoint}(endpoint, name, ...)
 
+\method{create_azure_table}{azure_table}(endpoint, ...)
+
 delete_azure_table(endpoint, ...)
 
 \method{delete_azure_table}{table_endpoint}(endpoint, name, confirm = TRUE, ...)
@@ -31,7 +34,7 @@ delete_azure_table(endpoint, ...)
 \method{delete_azure_table}{azure_table}(endpoint, ...)
 }
 \arguments{
-\item{endpoint}{An object of class \code{table_endpoint}.}
+\item{endpoint}{An object of class \code{table_endpoint} or, for \code{create_azure_table.azure_table}, an object of class \code{azure_table}.}
 
 \item{...}{Other arguments passed to lower-level functions.}
 
@@ -54,9 +57,11 @@ These methods are for accessing and managing tables within a storage account.
 endp <- table_endpoint("https://mystorageacct.table.core.windows.net", key="mykey")
 
 create_azure_table(endp, "mytable")
-tab <- azure_table(endp, "mytable")
+tab <- azure_table(endp, "mytable2")
+create_azure_table(tab)
 list_azure_tables(endp)
 delete_azure_table(tab)
+delete_azure_table(endp, "mytable")
 
 }
 }
