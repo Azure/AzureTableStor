@@ -115,8 +115,8 @@ update_table_entity <- function(table, entity, row_key=NULL, partition_key=NULL,
     headers <- if(!is.null(etag))
         list(`If-Match`=etag)
     else list()
-    path <- sprintf("%s(PartitionKey='%s',RowKey='%s')", table$name, partition_key, row_key)
-    res <- call_table_endpoint(table$endpoint, table$name, body=entity, headers=headers, http_verb="POST",
+    path <- sprintf("%s(PartitionKey='%s',RowKey='%s')", table$name, entity$PartitionKey, entity$RowKey)
+    res <- call_table_endpoint(table$endpoint, path, body=entity, headers=headers, http_verb="PUT",
                                http_status_handler="pass")
     httr::stop_for_status(res, storage_error_message(res))
     invisible(httr::headers(res)$ETag)
