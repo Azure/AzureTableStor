@@ -1,11 +1,11 @@
 Package: AzureTableStor
-Title: Interface to the 'Azure CosmosDB' and table storage services
+Title: Interface to the table storage service in 'Azure'
 Version: 0.0.1
 Authors@R: c(
     person("Hong", "Ooi", , "hongooi73@gmail.com", role = c("aut", "cre")),
     person("Microsoft", role="cph")
     )
-Description: An interface to the table storage service in 'Azure': <https://azure.microsoft.com/en-us/services/storage/tables/>. It provides functionality for reading and writing data stored in tables, both as part of a storage account and from a 'CosmosDB' database with the table service API. Part of the 'AzureR' family of packages.
+Description: An interface to the table storage service in 'Azure': <https://azure.microsoft.com/en-us/services/storage/tables/>. Supplies functionality for reading and writing data stored in tables, both as part of a storage account and from a 'CosmosDB' database with the table service API. Part of the 'AzureR' family of packages.
 URL: https://github.com/Azure/AzureTableStor https://github.com/Azure/AzureR
 BugReports: https://github.com/Azure/AzureTableStor/issues
 License: MIT + file LICENSE
