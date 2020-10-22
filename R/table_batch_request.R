@@ -35,7 +35,7 @@
 #' \dontrun{
 #'
 #' endp <- table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
-#' tab <- create_azure_table(endp, "mytable")
+#' tab <- create_storage_table(endp, "mytable")
 #'
 #' ## a simple batch insert
 #' ir <- subset(iris, Species == "setosa")

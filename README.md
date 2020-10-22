@@ -15,8 +15,14 @@ The primary repo for this package is at https://github.com/Azure/AzureTableStor;
 ```r
 library(AzureTableStor)
 
+# storage account endpoint
+endp <- table_endpoint("https://mystorageacct.table.core.windows.net", key="mykey")
+# Cosmos DB w/table API endpoint
 endp <- table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
-tab <- create_azure_table(endp, "mytable")
+
+create_storage_table(endp, "mytable")
+list_storage_tables(endp)
+tab <- storage_table(endp, "mytable")
 
 insert_table_entity(tab, list(
     RowKey="row1",
@@ -27,12 +33,14 @@ insert_table_entity(tab, list(
 
 get_table_entity(tab, "row1", "partition1")
 
-update_table_entity(tab, list(
-    RowKey="row1",
-    PartitionKey="partition1",
-    firstname="Satya",
-    lastname="Nadella"
-))
+# specifying the entity as JSON text instead of a list
+update_table_entity(tab,
+'{
+    "RowKey": "row1",
+    "PartitionKey": "partition1",
+    "firstname": "Satya",
+    "lastname": "Nadella
+}')
 
 # we can import to the same table as above: table storage doesn't enforce a schema
 import_table_entities(tab, mtcars,

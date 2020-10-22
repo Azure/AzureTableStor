@@ -1,6 +1,6 @@
 #' Operations on table entities (rows)
 #'
-#' @param table A table object, of class `azure_table`.
+#' @param table A table object, of class `storage_table`.
 #' @param entity For `insert_table_entity` and `update_table_entity`, a named list giving the properties (columns) of the entity. See 'Details' below.
 #' @param data For `import_table_entities`, a data frame. See 'Details' below.
 #' @param row_key,partition_key For `get_table_entity`, `update_table_entity` and `delete_table_entity`, the row and partition key values that identify the entity to get, update or delete. For `import_table_entities`, the columns in the imported data to treat as the row and partition keys. The default is to use columns named 'RowKey' and 'PartitionKey' respectively.
@@ -10,7 +10,7 @@
 #' @param batch_status_handler For `import_table_entities`, what to do if one or more of the batch operations fails. The default is to signal a warning and return a list of response objects, from which the details of the failure(s) can be determined. Set this to "pass" to ignore the failure.
 #'
 #' @details
-#' These functions operate on rows of a table, also known as _entities_. `insert`, `get`, `update` and `delete_table_entity` operate on an individual row. `import_table_entities` bulk-inserts multiple rows of data into the table, using batch transactions. `list_table_entities` queries the table and returns multiple rows based on the `filter` and `subset` arguments.
+#' These functions operate on rows of a table, also known as _entities_. `insert`, `get`, `update` and `delete_table_entity` operate on an individual row. `import_table_entities` bulk-inserts multiple rows of data into the table, using batch transactions. `list_table_entities` queries the table and returns multiple rows, subsetted on the `filter` and `select` arguments.
 #'
 #' Table storage imposes the following requirements for properties (columns) of an entity:
 #' - There must be properties named `RowKey` and `PartitionKey`, which together form the entity's unique identifier. These properties must be of type character.
@@ -33,14 +33,14 @@
 #' `import_table_entities` invisibly returns a named list, with one component for each value of the `PartitionKey` column. Each component contains the results of the individual operations to insert each row into the table.
 #'
 #' @seealso
-#' [azure_table], [do_batch_transaction]
+#' [storage_table], [do_batch_transaction]
 #'
 #' [Understanding the table service data model](https://docs.microsoft.com/en-us/rest/api/storageservices/understanding-the-table-service-data-model)
 #' @examples
 #' \dontrun{
 #'
 #' endp <- table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
-#' tab <- create_azure_table(endp, "mytable")
+#' tab <- create_storage_table(endp, "mytable")
 #'
 #' insert_table_entity(tab, list(
 #'     RowKey="row1",
@@ -51,12 +51,14 @@
 #'
 #' get_table_entity(tab, "row1", "partition1")
 #'
-#' update_table_entity(tab, list(
-#'     RowKey="row1",
-#'     PartitionKey="partition1",
-#'     firstname="Satya",
-#'     lastname="Nadella"
-#' ))
+#' # specifying the entity as JSON text instead of a list
+#' update_table_entity(tab,
+#' '{
+#'     "RowKey": "row1",
+#'     "PartitionKey": "partition1",
+#'     "firstname": "Bill",
+#'     "lastname": "Gates"
+#' }')
 #'
 #' # we can import to the same table as above: table storage doesn't enforce a schema
 #' import_table_entities(tab, mtcars,
@@ -148,6 +150,7 @@ list_table_entities <- function(table, filter=NULL, select=NULL, as_data_frame=T
     repeat
     {
         res <- call_table_endpoint(table$endpoint, path, options=opts, http_status_handler="pass")
+        httr::stop_for_status(res, storage_error_message(res))
         heads <- httr::headers(res)
         res <- httr::content(res)
         val <- c(val, res$value)

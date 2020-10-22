@@ -64,7 +64,7 @@ table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
 }
 }
 \seealso{
-\link{azure_table}, \link{table_entity}, \link[AzureStor:storage_call]{AzureStor::call_storage_endpoint}
+\link{storage_table}, \link{table_entity}, \link[AzureStor:storage_call]{AzureStor::call_storage_endpoint}
 
 \href{https://docs.microsoft.com/en-us/rest/api/storageservices/table-service-rest-api}{Table service REST API reference}
 

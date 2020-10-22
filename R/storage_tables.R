@@ -1,14 +1,14 @@
 #' Operations with azure tables
 #'
-#' @param endpoint An object of class `table_endpoint` or, for `create_azure_table.azure_table`, an object of class `azure_table`.
+#' @param endpoint An object of class `table_endpoint` or, for `create_storage_table.storage_table`, an object of class `storage_table`.
 #' @param name The name of a table in a storage account.
 #' @param confirm For deleting a table, whether to ask for confirmation.
 #' @param ... Other arguments passed to lower-level functions.
-#' @rdname azure_table
+#' @rdname storage_table
 #' @details
 #' These methods are for accessing and managing tables within a storage account.
 #' @return
-#' `azure_table` and `create_azure_table` return an object of class `azure_table`. `list_azure_tables` returns a list of such objects.
+#' `storage_table` and `create_storage_table` return an object of class `storage_table`. `list_storage_tables` returns a list of such objects.
 #' @seealso
 #' [table_endpoint], [table_entity]
 #' @examples
@@ -16,38 +16,38 @@
 #'
 #' endp <- table_endpoint("https://mystorageacct.table.core.windows.net", key="mykey")
 #'
-#' create_azure_table(endp, "mytable")
-#' tab <- azure_table(endp, "mytable2")
-#' create_azure_table(tab)
-#' list_azure_tables(endp)
-#' delete_azure_table(tab)
-#' delete_azure_table(endp, "mytable")
+#' create_storage_table(endp, "mytable")
+#' tab <- storage_table(endp, "mytable2")
+#' create_storage_table(tab)
+#' list_storage_tables(endp)
+#' delete_storage_table(tab)
+#' delete_storage_table(endp, "mytable")
 #'
 #' }
 #' @export
-azure_table <- function(endpoint, ...)
+storage_table <- function(endpoint, ...)
 {
-    UseMethod("azure_table")
+    UseMethod("storage_table")
 }
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-azure_table.table_endpoint <- function(endpoint, name, ...)
+storage_table.table_endpoint <- function(endpoint, name, ...)
 {
-    structure(list(endpoint=endpoint, name=name), class="azure_table")
+    structure(list(endpoint=endpoint, name=name), class="storage_table")
 }
 
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-list_azure_tables <- function(endpoint, ...)
+list_storage_tables <- function(endpoint, ...)
 {
-    UseMethod("list_azure_tables")
+    UseMethod("list_storage_tables")
 }
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-list_azure_tables.table_endpoint <- function(endpoint, ...)
+list_storage_tables.table_endpoint <- function(endpoint, ...)
 {
     opts <- list()
     val <- list()
@@ -63,43 +63,43 @@ list_azure_tables.table_endpoint <- function(endpoint, ...)
             break
         opts$NextTableName <- heads$`x-ms-continuation-NextTableName`
     }
-    named_list(lapply(val, function(x) azure_table(endpoint, x$TableName)))
+    named_list(lapply(val, function(x) storage_table(endpoint, x$TableName)))
 }
 
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-create_azure_table <- function(endpoint, ...)
+create_storage_table <- function(endpoint, ...)
 {
-    UseMethod("create_azure_table")
+    UseMethod("create_storage_table")
 }
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-create_azure_table.table_endpoint <- function(endpoint, name, ...)
+create_storage_table.table_endpoint <- function(endpoint, name, ...)
 {
     res <- call_table_endpoint(endpoint, "Tables", body=list(TableName=name), ..., http_verb="POST")
-    azure_table(endpoint, res$TableName)
+    storage_table(endpoint, res$TableName)
 }
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-create_azure_table.azure_table <- function(endpoint, ...)
+create_storage_table.storage_table <- function(endpoint, ...)
 {
-    create_azure_table(endpoint$endpoint, endpoint$name)
+    create_storage_table(endpoint$endpoint, endpoint$name)
 }
 
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-delete_azure_table <- function(endpoint, ...)
+delete_storage_table <- function(endpoint, ...)
 {
-    UseMethod("delete_azure_table")
+    UseMethod("delete_storage_table")
 }
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-delete_azure_table.table_endpoint <- function(endpoint, name, confirm=TRUE, ...)
+delete_storage_table.table_endpoint <- function(endpoint, name, confirm=TRUE, ...)
 {
     if(!delete_confirmed(confirm, name, "table"))
         return(invisible(NULL))
@@ -107,16 +107,16 @@ delete_azure_table.table_endpoint <- function(endpoint, name, confirm=TRUE, ...)
     invisible(call_table_endpoint(endpoint, path, http_verb="DELETE"))
 }
 
-#' @rdname azure_table
+#' @rdname storage_table
 #' @export
-delete_azure_table.azure_table <- function(endpoint, ...)
+delete_storage_table.storage_table <- function(endpoint, ...)
 {
-    delete_azure_table(endpoint$endpoint, endpoint$name, ...)
+    delete_storage_table(endpoint$endpoint, endpoint$name, ...)
 }
 
 
 #' @export
-print.azure_table <- function(x, ...)
+print.storage_table <- function(x, ...)
 {
     cat("Azure table '", x$name, "'\n",
         sep = "")

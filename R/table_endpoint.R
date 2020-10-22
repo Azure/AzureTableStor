@@ -18,7 +18,7 @@
 #' An object of class `table_endpoint`, inheriting from `storage_endpoint`. This is the analogue of the `blob_endpoint`, `file_endpoint` and `adls_endpoint` classes provided by the AzureStor package.
 #'
 #' @seealso
-#' [azure_table], [table_entity], [AzureStor::call_storage_endpoint]
+#' [storage_table], [table_entity], [AzureStor::call_storage_endpoint]
 #'
 #' [Table service REST API reference](https://docs.microsoft.com/en-us/rest/api/storageservices/table-service-rest-api)
 #'

@@ -35,7 +35,7 @@ import_table_entities(
 )
 }
 \arguments{
-\item{table}{A table object, of class \code{azure_table}.}
+\item{table}{A table object, of class \code{storage_table}.}
 
 \item{entity}{For \code{insert_table_entity} and \code{update_table_entity}, a named list giving the properties (columns) of the entity. See 'Details' below.}
 
@@ -64,7 +64,7 @@ import_table_entities(
 Operations on table entities (rows)
 }
 \details{
-These functions operate on rows of a table, also known as \emph{entities}. \code{insert}, \code{get}, \code{update} and \code{delete_table_entity} operate on an individual row. \code{import_table_entities} bulk-inserts multiple rows of data into the table, using batch transactions. \code{list_table_entities} queries the table and returns multiple rows based on the \code{filter} and \code{subset} arguments.
+These functions operate on rows of a table, also known as \emph{entities}. \code{insert}, \code{get}, \code{update} and \code{delete_table_entity} operate on an individual row. \code{import_table_entities} bulk-inserts multiple rows of data into the table, using batch transactions. \code{list_table_entities} queries the table and returns multiple rows, subsetted on the \code{filter} and \code{select} arguments.
 
 Table storage imposes the following requirements for properties (columns) of an entity:
 \itemize{
@@ -84,7 +84,7 @@ For \code{insert_table_entity}, \code{update_table_entity} and \code{import_tabl
 \dontrun{
 
 endp <- table_endpoint("https://mycosmosdb.table.cosmos.azure.com:443", key="mykey")
-tab <- create_azure_table(endp, "mytable")
+tab <- create_storage_table(endp, "mytable")
 
 insert_table_entity(tab, list(
     RowKey="row1",
@@ -95,12 +95,14 @@ insert_table_entity(tab, list(
 
 get_table_entity(tab, "row1", "partition1")
 
-update_table_entity(tab, list(
-    RowKey="row1",
-    PartitionKey="partition1",
-    firstname="Satya",
-    lastname="Nadella"
-))
+# specifying the entity as JSON text instead of a list
+update_table_entity(tab,
+'{
+    "RowKey": "row1",
+    "PartitionKey": "partition1",
+    "firstname": "Bill",
+    "lastname": "Gates"
+}')
 
 # we can import to the same table as above: table storage doesn't enforce a schema
 import_table_entities(tab, mtcars,
@@ -116,7 +118,7 @@ delete_table_entity(tab, "row1", "partition1")
 }
 }
 \seealso{
-\link{azure_table}, \link{do_batch_transaction}
+\link{storage_table}, \link{do_batch_transaction}
 
 \href{https://docs.microsoft.com/en-us/rest/api/storageservices/understanding-the-table-service-data-model}{Understanding the table service data model}
 }

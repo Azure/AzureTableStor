@@ -26,24 +26,24 @@ test_that("Table endpoint works",
     expect_is(endp, "table_endpoint")
     expect_identical(endp, endp2)
 
-    expect_true(is_empty(list_azure_tables(endp)))
+    expect_true(is_empty(list_storage_tables(endp)))
 
     # ways of creating a container
     name1 <- make_name()
-    tab <- azure_table(endp, name1)
-    create_azure_table(tab)
-    create_azure_table(endp, make_name())
+    tab <- storage_table(endp, name1)
+    create_storage_table(tab)
+    create_storage_table(endp, make_name())
 
-    lst <- list_azure_tables(endp)
-    expect_true(is.list(lst) && inherits(lst[[1]], "azure_table") && length(lst) == 2)
+    lst <- list_storage_tables(endp)
+    expect_true(is.list(lst) && inherits(lst[[1]], "storage_table") && length(lst) == 2)
 
     expect_identical(tab$name, lst[[name1]]$name)
 
-    expect_silent(delete_azure_table(tab, confirm=FALSE))
+    expect_silent(delete_storage_table(tab, confirm=FALSE))
 })
 
 
 teardown({
-    lst <- list_azure_tables(endp)
-    lapply(lst, delete_azure_table, confirm=FALSE)
+    lst <- list_storage_tables(endp)
+    lapply(lst, delete_storage_table, confirm=FALSE)
 })
