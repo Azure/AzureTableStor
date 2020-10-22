@@ -209,7 +209,7 @@ import_table_entities <- function(table, data, row_key=NULL, partition_key=NULL,
         })
     })
 
-    res <- lapply(unlist(lst, recursive=FALSE), do_batch_transaction)
+    res <- lapply(unlist(lst, recursive=FALSE), do_batch_transaction, batch_status_handler=batch_status_handler)
     invisible(res)
 }
 
