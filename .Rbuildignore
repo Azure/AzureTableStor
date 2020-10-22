@@ -5,6 +5,7 @@
 \.Rxproj$
 ^\.Rproj\.user$
 CONTRIBUTING.md
+CODE_OF_CONDUCT.md
 ^LICENSE\.md$
 ^SECURITY\.md$
-azure-pipelines.yml
+^\.github$

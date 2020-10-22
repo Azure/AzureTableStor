@@ -7,13 +7,16 @@
 #' @param body The request body for a PUT/POST/PATCH operation.
 #' @param metadata The level of ODATA metadata to include in the response.
 #' @param http_verb The HTTP verb (method) for the operation.
-#' @param operations For `do_batch_transaction`, a list of individual operations to be batched up.
+#' @param operations For `create_batch_transaction`, a list of individual operations to be batched up.
+#' @param transaction For `do_batch_transaction`, an object of class `batch_transaction`.
+#' @param operations A list of individual table operation objects, each of class `table_operation`.
 #' @param batch_status_handler For `do_batch_transaction`, what to do if one or more of the batch operations fails. The default is to signal a warning and return a list of response objects, from which the details of the failure(s) can be determined. Set this to "pass" to ignore the failure.
+#' @param ... Arguments passed to lower-level functions.
 #'
 #' @details
 #' Table storage supports batch transactions on entities that are in the same table and belong to the same partition group. Batch transactions are also known as _entity group transactions_.
 #'
-#' You can use `create_batch_operation` to produce an object corresponding to a single table storage operation, such as inserting, deleting or updating an entity. Multiple such objects can then be passed to `do_batch_transaction`, which will carry them out as a single atomic transaction.
+#' You can use `create_table_operation` to produce an object corresponding to a single table storage operation, such as inserting, deleting or updating an entity. Multiple such objects can then be passed to `create_batch_transaction`, which bundles them into a single atomic transaction. Call `do_batch_transaction` to send the transaction to the endpoint.
 #'
 #' Note that batch transactions are subject to some limitations imposed by the REST API:
 #' - All entities subject to operations as part of the transaction must have the same `PartitionKey` value.
@@ -21,9 +24,9 @@
 #' - The transaction can include at most 100 entities, and its total payload may be no more than 4 MB in size.
 #'
 #' @return
-#' `create_batch_operation` returns an object of class `batch_operation`.
+#' `create_table_operation` returns an object of class `table_operation`.
 #'
-#' `do_batch_transaction` returns a list of objects of class `batch_operation_response`, representing the results of each individual operation. Each object contains elements named `status`, `headers` and `body` containing the respective parts of the response. Note that the number of returned objects may be smaller than the number of operations in the batch, if the transaction failed.
+#' `do_batch_transaction` returns a list of objects of class `table_operation_response`, representing the results of each individual operation. Each object contains elements named `status`, `headers` and `body` containing the respective parts of the response. Note that the number of returned objects may be smaller than the number of operations in the batch, if the transaction failed.
 #' @seealso
 #' [import_table_entities], which uses (multiple) batch transactions under the hood
 #'
@@ -46,15 +49,16 @@
 #'
 #' # generate the array of insert operations: 1 per row
 #' ops <- lapply(seq_len(nrow(ir)), function(i)
-#'     create_batch_operation(endp, "mytable", body=ir[i, ], http_verb="POST")))
+#'     create_table_operation(endp, "mytable", body=ir[i, ], http_verb="POST")))
 #'
-#' # send it to the endpoint
-#' do_batch_transaction(endp, ops)
+#' # create a batch transaction and send it to the endpoint
+#' bat <- create_batch_transaction(endp, ops)
+#' do_batch_transaction(bat)
 #'
 #' }
 #' @rdname table_batch
 #' @export
-create_batch_operation <- function(endpoint, path, options=list(), headers=list(), body=NULL,
+create_table_operation <- function(endpoint, path, options=list(), headers=list(), body=NULL,
     metadata=c("none", "minimal", "full"), http_verb=c("GET", "PUT", "POST", "PATCH", "DELETE", "HEAD"))
 {
     accept <- if(!is.null(metadata))
@@ -74,17 +78,17 @@ create_batch_operation <- function(endpoint, path, options=list(), headers=list(
     obj$headers <- utils::modifyList(headers, list(Accept=accept, DataServiceVersion="3.0;NetFx"))
     obj$method <- match.arg(http_verb)
     obj$body <- body
-    structure(obj, class="batch_operation")
+    structure(obj, class="table_operation")
 }
 
 
-serialize_batch_operation <- function(object)
+serialize_table_operation <- function(object)
 {
-    UseMethod("serialize_batch_operation")
+    UseMethod("serialize_table_operation")
 }
 
 
-serialize_batch_operation.batch_operation <- function(object)
+serialize_table_operation.table_operation <- function(object)
 {
         url <- httr::parse_url(object$endpoint$url)
         url$path <- object$path
@@ -115,7 +119,24 @@ serialize_batch_operation.batch_operation <- function(object)
 
 #' @rdname table_batch
 #' @export
-do_batch_transaction <- function(endpoint, operations, batch_status_handler=c("warn", "stop", "message", "pass"))
+create_batch_transaction <- function(endpoint, operations)
+{
+    structure(list(endpoint=endpoint, ops=operations), class="batch_transaction")
+}
+
+
+#' @rdname table_batch
+#' @export
+do_batch_transaction <- function(transaction, ...)
+{
+    UseMethod("do_batch_transaction")
+}
+
+
+#' @rdname table_batch
+#' @export
+do_batch_transaction.batch_transaction <- function(transaction,
+    batch_status_handler=c("warn", "stop", "message", "pass"), ...)
 {
     # batch REST API only supports 1 changeset per batch, and is unlikely to change
     batch_bound <- paste0("batch_", uuid::UUIDgenerate())
@@ -132,12 +153,13 @@ do_batch_transaction <- function(endpoint, operations, batch_status_handler=c("w
         paste0("--", changeset_bound, "--"),
         paste0("--", batch_bound, "--")
     )
-    serialized <- lapply(operations, function(op) c(paste0("--", changeset_bound), serialize_batch_operation(op)))
+    serialized <- lapply(transaction$ops,
+        function(op) c(paste0("--", changeset_bound), serialize_table_operation(op)))
     body <- paste0(c(batch_preamble, unlist(serialized), batch_postscript), collapse="\n")
     if(nchar(body) > 4194304)
         stop("Batch request too large, must be 4MB or less")
 
-    res <- call_table_endpoint(endpoint, "$batch", headers=headers, body=body, encode="raw",
+    res <- call_table_endpoint(transaction$endpoint, "$batch", headers=headers, body=body, encode="raw",
         http_verb="POST")
     process_batch_response(res, match.arg(batch_status_handler))
 }
@@ -200,22 +222,28 @@ process_operation_response <- function(response, handler)
     else NULL
 
     obj <- list(status=status, headers=headers, body=body)
-    class(obj) <- "batch_operation_response"
+    class(obj) <- "table_operation_response"
     obj
 }
 
 
 #' @export
-print.batch_operation <- function(x, ...)
+print.table_operation <- function(x, ...)
 {
     cat("<Table storage batch operation>\n")
     invisible(x)
 }
 
 #' @export
-print.batch_operation_response <- function(x, ...)
+print.table_operation_response <- function(x, ...)
 {
     cat("<Table storage batch operation response>\n")
     invisible(x)
 }
 
+#' @export
+print.batch_transaction <- function(x, ...)
+{
+    cat("<Table storage batch transaction>\n")
+    invisible(x)
+}

@@ -195,20 +195,21 @@ import_table_entities <- function(table, data, row_key=NULL, partition_key=NULL,
     path <- table$name
     headers <- list(Prefer="return-no-content")
     batch_status_handler <- match.arg(batch_status_handler)
-    res <- lapply(split(data, data$PartitionKey), function(dfpart)
+    lst <- lapply(split(data, data$PartitionKey), function(dfpart)
     {
         n <- nrow(dfpart)
         nchunks <- n %/% 100 + (n %% 100 > 0)
-        reschunks <- lapply(seq_len(nchunks), function(chunk)
+        lapply(seq_len(nchunks), function(chunk)
         {
             rows <- seq(from=(chunk-1)*100 + 1, to=min(chunk*100, n))
             dfchunk <- dfpart[rows, ]
             ops <- lapply(seq_len(nrow(dfchunk)), function(i)
-                create_batch_operation(endpoint, path, body=dfchunk[i, ], headers=headers, http_verb="POST"))
-            do_batch_transaction(endpoint, ops, batch_status_handler)
+                create_table_operation(endpoint, path, body=dfchunk[i, ], headers=headers, http_verb="POST"))
+            create_batch_transaction(endpoint, ops)
         })
-        unlist(reschunks, recursive=FALSE)
     })
+
+    res <- lapply(unlist(lst, recursive=FALSE), do_batch_transaction)
     invisible(res)
 }
 
