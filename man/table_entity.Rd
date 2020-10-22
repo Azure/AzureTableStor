@@ -31,7 +31,8 @@ import_table_entities(
   data,
   row_key = NULL,
   partition_key = NULL,
-  batch_status_handler = c("warn", "stop", "message", "pass")
+  batch_status_handler = c("warn", "stop", "message", "pass"),
+  ...
 )
 }
 \arguments{
@@ -50,6 +51,8 @@ import_table_entities(
 \item{data}{For \code{import_table_entities}, a data frame. See 'Details' below.}
 
 \item{batch_status_handler}{For \code{import_table_entities}, what to do if one or more of the batch operations fails. The default is to signal a warning and return a list of response objects, from which the details of the failure(s) can be determined. Set this to "pass" to ignore the failure.}
+
+\item{...}{For \code{import_table_entities}, further named arguments passed to \code{do_batch_transaction}.}
 }
 \value{
 \code{insert_table_entity} and \code{update_table_entity} return the Etag of the inserted/updated entity, invisibly.

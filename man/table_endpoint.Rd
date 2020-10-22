@@ -20,7 +20,11 @@ call_table_endpoint(
   headers = list(),
   body = NULL,
   ...,
-  metadata = c("none", "minimal", "full")
+  http_verb = c("GET", "DELETE", "PUT", "POST", "HEAD", "PATCH"),
+  http_status_handler = c("stop", "warn", "message", "pass"),
+  return_headers = (http_verb == "HEAD"),
+  metadata = c("none", "minimal", "full"),
+  num_retries = 10
 )
 }
 \arguments{
@@ -44,10 +48,20 @@ call_table_endpoint(
 
 \item{...}{For \code{call_table_endpoint}, further arguments passed to \code{AzureStor::call_storage_endpoint} and \code{httr::VERB}.}
 
+\item{http_verb}{For \code{call_table_endpoint}, the HTTP verb (method) of the operation.}
+
+\item{http_status_handler}{For \code{call_table_endpoint}, the R handler for the HTTP status code of the response. \code{"stop"}, \code{"warn"} or \code{"message"} will call the corresponding handlers in httr, while \code{"pass"} ignores the status code. The latter is primarily useful for debugging purposes.}
+
+\item{return_headers}{For \code{call_table_endpoint}, whether to return the (parsed) response headers instead of the body. Ignored if \code{http_status_handler="pass"}.}
+
 \item{metadata}{For \code{call_table_endpoint}, the level of ODATA metadata to include in the response.}
+
+\item{num_retries}{The number of times to retry the call, if the response is a HTTP error 429 (too many requests). The Cosmos DB endpoint tends to be aggressive at rate-limiting requests, to maintain the desired level of latency. This will generally not affect calls to an endpoint provided by a storage account.}
 }
 \value{
-An object of class \code{table_endpoint}, inheriting from \code{storage_endpoint}. This is the analogue of the \code{blob_endpoint}, \code{file_endpoint} and \code{adls_endpoint} classes provided by the AzureStor package.
+\code{table_endpoint} returns an object of class \code{table_endpoint}, inheriting from \code{storage_endpoint}. This is the analogue of the \code{blob_endpoint}, \code{file_endpoint} and \code{adls_endpoint} classes provided by the AzureStor package.
+
+\code{call_table_endpoint} returns the body of the response by default, or the headers if \code{return_headers=TRUE}. If \code{http_status_handler="pass"}, it returns the entire response object without modification.
 }
 \description{
 Table storage endpoint object, and method to call it.
