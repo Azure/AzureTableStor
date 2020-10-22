@@ -54,18 +54,19 @@ table_endpoint <- function(endpoint, key=NULL, token=NULL, sas=NULL,
 #' @rdname table_endpoint
 #' @export
 call_table_endpoint <- function(endpoint, path, options=list(), headers=list(), body=NULL, ...,
-    metadata=c("none", "minimal", "full"))
+    metadata=c("none", "minimal", "full"),
+    http_status_handler=c("stop", "warn", "message", "pass"),
+    num_retries=10)
 {
-    accept <- if(!is.null(metadata))
+    headers <- utils::modifyList(headers, list(DataServiceVersion="3.0;NetFx"))
+    if(!is.null(metadata))
     {
-        metadata <- match.arg(metadata)
-        switch(metadata,
+        accept <- switch(match.arg(metadata),
             "none"="application/json;odata=nometadata",
             "minimal"="application/json;odata=minimalmetadata",
             "full"="application/json;odata=fullmetadata")
+        headers$Accept <- accept
     }
-    else NULL
-    headers <- utils::modifyList(headers, list(Accept=accept, DataServiceVersion="3.0;NetFx"))
 
     if(is.list(body))
     {
@@ -73,6 +74,16 @@ call_table_endpoint <- function(endpoint, path, options=list(), headers=list(), 
         headers$`Content-Length` <- nchar(body)
         headers$`Content-Type` <- "application/json"
     }
-    call_storage_endpoint(endpoint, path=path, options=options, body=body, headers=headers, ...)
+
+    # handle possible rate limiting in Cosmos DB
+    for(i in seq_len(num_retries))
+    {
+        res <- call_storage_endpoint(endpoint, path=path, options=options, body=body, headers=headers,
+            http_status_handler="pass", ...)
+        if(httr::status_code(res) != 429)
+            break
+        Sys.sleep(1.5^i + runif(1, max=0.1))
+    }
+    process_storage_response(res, match.arg(http_status_handler), FALSE)
 }
 
