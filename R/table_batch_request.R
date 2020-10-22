@@ -11,6 +11,7 @@
 #' @param transaction For `do_batch_transaction`, an object of class `batch_transaction`.
 #' @param operations A list of individual table operation objects, each of class `table_operation`.
 #' @param batch_status_handler For `do_batch_transaction`, what to do if one or more of the batch operations fails. The default is to signal a warning and return a list of response objects, from which the details of the failure(s) can be determined. Set this to "pass" to ignore the failure.
+#' @param num_retries The number of times to retry the call, if the response is a HTTP error 429 (too many requests). The Cosmos DB endpoint tends to be aggressive at rate-limiting requests, to maintain the desired level of latency. This will generally not affect calls to an endpoint provided by a storage account.
 #' @param ... Arguments passed to lower-level functions.
 #'
 #' @details
@@ -26,7 +27,7 @@
 #' @return
 #' `create_table_operation` returns an object of class `table_operation`.
 #'
-#' `do_batch_transaction` returns a list of objects of class `table_operation_response`, representing the results of each individual operation. Each object contains elements named `status`, `headers` and `body` containing the respective parts of the response. Note that the number of returned objects may be smaller than the number of operations in the batch, if the transaction failed.
+#' Assuming the batch transaction did not fail due to rate-limiting, `do_batch_transaction` returns a list of objects of class `table_operation_response`, representing the results of each individual operation. Each object contains elements named `status`, `headers` and `body` containing the respective parts of the response. Note that the number of returned objects may be smaller than the number of operations in the batch, if the transaction failed.
 #' @seealso
 #' [import_table_entities], which uses (multiple) batch transactions under the hood
 #'
@@ -90,30 +91,30 @@ serialize_table_operation <- function(object)
 
 serialize_table_operation.table_operation <- function(object)
 {
-        url <- httr::parse_url(object$endpoint$url)
-        url$path <- object$path
-        url$query <- object$options
+    url <- httr::parse_url(object$endpoint$url)
+    url$path <- object$path
+    url$query <- object$options
 
-        preamble <- c(
-            "Content-Type: application/http",
-            "Content-Transfer-Encoding: binary",
-            "",
-            paste(object$method, httr::build_url(url), "HTTP/1.1"),
-            paste0(names(object$headers), ": ", object$headers),
-            if(!is.null(object$body)) "Content-Type: application/json"
-        )
+    preamble <- c(
+        "Content-Type: application/http",
+        "Content-Transfer-Encoding: binary",
+        "",
+        paste(object$method, httr::build_url(url), "HTTP/1.1"),
+        paste0(names(object$headers), ": ", object$headers),
+        if(!is.null(object$body)) "Content-Type: application/json"
+    )
 
-        if(is.null(object$body))
-            preamble
-        else if(!is.character(object$body))
-        {
-            body <- jsonlite::toJSON(object$body, auto_unbox=TRUE, null="null")
-            # special-case treatment for 1-row dataframes
-            if(is.data.frame(object$body) && nrow(object$body) == 1)
-                body <- substr(body, 2, nchar(body) - 1)
-            c(preamble, "", body)
-        }
-        else c(preamble, "", object$body)
+    if(is.null(object$body))
+        preamble
+    else if(!is.character(object$body))
+    {
+        body <- jsonlite::toJSON(object$body, auto_unbox=TRUE, null="null")
+        # special-case treatment for 1-row dataframes
+        if(is.data.frame(object$body) && nrow(object$body) == 1)
+            body <- substr(body, 2, nchar(body) - 1)
+        c(preamble, "", body)
+    }
+    else c(preamble, "", object$body)
 }
 
 
@@ -136,7 +137,7 @@ do_batch_transaction <- function(transaction, ...)
 #' @rdname table_batch
 #' @export
 do_batch_transaction.batch_transaction <- function(transaction,
-    batch_status_handler=c("warn", "stop", "message", "pass"), ...)
+    batch_status_handler=c("warn", "stop", "message", "pass"), num_retries=10, ...)
 {
     # batch REST API only supports 1 changeset per batch, and is unlikely to change
     batch_bound <- paste0("batch_", uuid::UUIDgenerate())
@@ -159,13 +160,34 @@ do_batch_transaction.batch_transaction <- function(transaction,
     if(nchar(body) > 4194304)
         stop("Batch request too large, must be 4MB or less")
 
-    res <- call_table_endpoint(transaction$endpoint, "$batch", headers=headers, body=body, encode="raw",
-        http_verb="POST")
-    process_batch_response(res, match.arg(batch_status_handler))
+    for(i in seq_len(num_retries))
+    {
+        res <- call_table_endpoint(transaction$endpoint, "$batch", headers=headers, body=body, encode="raw",
+            http_verb="POST")
+        reslst <- process_batch_response(res)
+        statuses <- sapply(reslst, `[[`, "status")
+        complete <- all(statuses != 429)
+        if(complete)
+            break
+        Sys.sleep(1.5^i)
+    }
+    if(!complete)
+        httr::stop_for_status(429, "complete batch transaction")
+    batch_status_handler <- match.arg(batch_status_handler)
+    if(any(statuses >= 300) && batch_status_handler != "pass")
+    {
+        msg <- paste("Batch transaction failed, max status code was", max(statuses))
+        switch(batch_status_handler,
+            "stop"=stop(msg, call.=FALSE),
+            "warn"=warning(msg, call.=FALSE),
+            "message"=message(msg, call.=FALSE)
+        )
+    }
+    statuses
 }
 
 
-process_batch_response <- function(response, batch_status_handler)
+process_batch_response <- function(response)
 {
     # assume response (including body) is always text
     response <- rawToChar(response)
@@ -184,16 +206,15 @@ process_batch_response <- function(response, batch_status_handler)
 
     lines <- lines[3:(n-3)]
     op_bounds <- grep(changeset_bound, lines)
-    op_responses <- Map(
-        function(start, end) process_operation_response(lines[seq(start, end)], batch_status_handler),
+    Map(
+        function(start, end) process_operation_response(lines[seq(start, end)]),
         op_bounds + 1,
         c(op_bounds[-1], length(lines))
     )
-    op_responses
 }
 
 
-process_operation_response <- function(response, handler)
+process_operation_response <- function(response)
 {
     blanks <- which(response == "")
     if(length(blanks) < 2)
@@ -206,16 +227,6 @@ process_operation_response <- function(response, handler)
     names(headers) <- sapply(headers, `[[`, 1)
     headers <- sapply(headers, `[[`, 2, simplify=FALSE)
     class(headers) <- c("insensitive", "list")
-
-    if(status >= 300)
-    {
-        if(handler == "stop")
-            stop(httr::http_condition(status, "error"))
-        else if(handler == "warn")
-            warning(httr::http_condition(status, "warning"))
-        else if(handler == "message")
-            message(httr::http_condition(status, "message"))
-    }
 
     body <- if(!(status %in% c(204, 205)) && blanks[2] < length(response))
         response[seq(blanks[2]+1, length(response))]

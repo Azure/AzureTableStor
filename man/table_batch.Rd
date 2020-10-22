@@ -24,6 +24,7 @@ do_batch_transaction(transaction, ...)
 \method{do_batch_transaction}{batch_transaction}(
   transaction,
   batch_status_handler = c("warn", "stop", "message", "pass"),
+  num_retries = 10,
   ...
 )
 }
@@ -49,11 +50,13 @@ do_batch_transaction(transaction, ...)
 \item{...}{Arguments passed to lower-level functions.}
 
 \item{batch_status_handler}{For \code{do_batch_transaction}, what to do if one or more of the batch operations fails. The default is to signal a warning and return a list of response objects, from which the details of the failure(s) can be determined. Set this to "pass" to ignore the failure.}
+
+\item{num_retries}{The number of times to retry the call, if the response is a HTTP error 429 (too many requests). The Cosmos DB endpoint tends to be aggressive at rate-limiting requests, to maintain the desired level of latency. This will generally not affect calls to an endpoint provided by a storage account.}
 }
 \value{
 \code{create_table_operation} returns an object of class \code{table_operation}.
 
-\code{do_batch_transaction} returns a list of objects of class \code{table_operation_response}, representing the results of each individual operation. Each object contains elements named \code{status}, \code{headers} and \code{body} containing the respective parts of the response. Note that the number of returned objects may be smaller than the number of operations in the batch, if the transaction failed.
+Assuming the batch transaction did not fail due to rate-limiting, \code{do_batch_transaction} returns a list of objects of class \code{table_operation_response}, representing the results of each individual operation. Each object contains elements named \code{status}, \code{headers} and \code{body} containing the respective parts of the response. Note that the number of returned objects may be smaller than the number of operations in the batch, if the transaction failed.
 }
 \description{
 Batch transactions for table storage

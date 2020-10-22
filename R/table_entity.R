@@ -8,6 +8,7 @@
 #' @param filter,select For `list_table_entities`, optional row filter and column select expressions to subset the result with. If omitted, `list_table_entities` will return all entities in the table.
 #' @param as_data_frame For `list_table_entities`, whether to return the results as a data frame, rather than a list of table rows.
 #' @param batch_status_handler For `import_table_entities`, what to do if one or more of the batch operations fails. The default is to signal a warning and return a list of response objects, from which the details of the failure(s) can be determined. Set this to "pass" to ignore the failure.
+#' @param ... For `import_table_entities`, further named arguments passed to `do_batch_transaction`.
 #'
 #' @details
 #' These functions operate on rows of a table, also known as _entities_. `insert`, `get`, `update` and `delete_table_entity` operate on an individual row. `import_table_entities` bulk-inserts multiple rows of data into the table, using batch transactions. `list_table_entities` queries the table and returns multiple rows, subsetted on the `filter` and `select` arguments.
@@ -183,7 +184,7 @@ get_table_entity <- function(table, row_key, partition_key, select=NULL)
 #' @rdname table_entity
 #' @export
 import_table_entities <- function(table, data, row_key=NULL, partition_key=NULL,
-                                  batch_status_handler=c("warn", "stop", "message", "pass"))
+                                  batch_status_handler=c("warn", "stop", "message", "pass"), ...)
 {
     if(is.character(data) && jsonlite::validate(data))
         data <- jsonlite::fromJSON(data, simplifyDataFrame=TRUE)
@@ -212,7 +213,8 @@ import_table_entities <- function(table, data, row_key=NULL, partition_key=NULL,
         })
     })
 
-    res <- lapply(unlist(lst, recursive=FALSE), do_batch_transaction, batch_status_handler=batch_status_handler)
+    res <- lapply(unlist(lst, recursive=FALSE, use.names=FALSE), do_batch_transaction,
+        batch_status_handler=batch_status_handler, ...)
     invisible(res)
 }
 
