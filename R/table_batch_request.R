@@ -61,21 +61,21 @@
 create_table_operation <- function(endpoint, path, options=list(), headers=list(), body=NULL,
     metadata=c("none", "minimal", "full"), http_verb=c("GET", "PUT", "POST", "PATCH", "DELETE", "HEAD"))
 {
-    accept <- if(!is.null(metadata))
+    headers <- utils::modifyList(headers, list(DataServiceVersion="3.0;NetFx"))
+    if(!is.null(metadata))
     {
-        metadata <- match.arg(metadata)
-        switch(match.arg(metadata),
+        accept <- switch(match.arg(metadata),
             "none"="application/json;odata=nometadata",
             "minimal"="application/json;odata=minimalmetadata",
             "full"="application/json;odata=fullmetadata")
+        headers$Accept <- accept
     }
-    else NULL
 
     obj <- list()
     obj$endpoint <- endpoint
     obj$path <- path
     obj$options <- options
-    obj$headers <- utils::modifyList(headers, list(Accept=accept, DataServiceVersion="3.0;NetFx"))
+    obj$headers <- headers
     obj$method <- match.arg(http_verb)
     obj$body <- body
     structure(obj, class="table_operation")
