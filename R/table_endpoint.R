@@ -88,11 +88,11 @@ call_table_endpoint <- function(endpoint, path, options=list(), headers=list(), 
     for(i in seq_len(num_retries))
     {
         res <- call_storage_endpoint(endpoint, path=path, options=options, body=body, headers=headers,
-            http_verb=http_verb, http_status_handler="pass", return_headers=return_headers, ...)
+            http_verb=http_verb, http_status_handler="pass", ...)
         if(httr::status_code(res) != 429)
             break
         Sys.sleep(1.5^i)
     }
-    process_storage_response(res, match.arg(http_status_handler), FALSE)
+    process_storage_response(res, match.arg(http_status_handler), return_headers)
 }
 
