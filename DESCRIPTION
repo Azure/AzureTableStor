@@ -1,6 +1,6 @@
 Package: AzureTableStor
 Title: Interface to the Table Storage Service in 'Azure'
-Version: 0.0.1
+Version: 1.0.0
 Authors@R: c(
     person("Hong", "Ooi", , "hongooi73@gmail.com", role = c("aut", "cre")),
     person("Microsoft", role="cph")
