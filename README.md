@@ -4,7 +4,7 @@
 ![Downloads](https://cranlogs.r-pkg.org/badges/AzureTableStor)
 ![R-CMD-check](https://github.com/Azure/AzureTableStor/workflows/R-CMD-check/badge.svg)
 
-An R interface to the Azure table storage service, building on the functionality provided by [AzureStor](https://github.com/Azure/AzureStor).
+An R interface to the Azure able storage service, building on the functionality provided by [AzureStor](https://github.com/Azure/AzureStor).
 
 Table storage is excellent for flexible datasets&mdash;web app user data, address books, device information, and other metadata&mdash;and lets you build cloud applications without locking down the data model to particular schemas. Because different rows in the same table can have a different structure&mdash;for example, order information in one row, and customer information in another&mdash;you can evolve your application and table schema without taking it offline. The table storage service is available both as part of general Azure storage, and as an optional API in Azure Cosmos DB.
 
